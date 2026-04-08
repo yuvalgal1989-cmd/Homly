@@ -1,0 +1,11 @@
+# Virtual environment
+.venv/
+
+# Output data (scraped CSVs and debug files)
+yad2_output/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
