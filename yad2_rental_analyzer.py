@@ -7,7 +7,8 @@ import re
 import time
 from dataclasses import dataclass, asdict
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Tuple
+from urllib.parse import urlparse
 
 import numpy as np
 import pandas as pd
@@ -360,10 +361,16 @@ def extract_listings(page: Page, source: str) -> List[Listing]:
     return results
 
 
-def open_and_collect(page: Page, url: str, source: str, load_cycles: int = 10) -> List[Listing]:
+def open_and_collect(
+    page: Page, url: str, source: str, load_cycles: int = 10
+) -> Tuple[List[Listing], str]:
+    """
+    Open a Yad2 page, let the user set filters, then scrape.
+    Returns (listings, location_slug) where location_slug is parsed from the
+    page URL after the user has applied their filters.
+    """
     print(f"\nOpening {source} page...")
     page.goto(url, wait_until="domcontentloaded", timeout=60000)
-    # Give React time to hydrate before user starts interacting
     try:
         page.wait_for_load_state("networkidle", timeout=8000)
     except Exception:
@@ -381,9 +388,13 @@ def open_and_collect(page: Page, url: str, source: str, load_cycles: int = 10) -
     except Exception:
         time.sleep(2)
 
+    # Capture location from URL now — after filters are applied
+    location = extract_location_from_page(page)
+    print(f"[{source}] Detected location: {location!r}")
+
     print(f"[{source}] Starting scroll & load ({load_cycles} cycles)...")
     scroll_and_load(page, cycles=load_cycles)
-    return extract_listings(page, source)
+    return extract_listings(page, source), location
 
 
 def add_price_per_sqm(df: pd.DataFrame) -> pd.DataFrame:
@@ -506,9 +517,38 @@ def build_buy_rent_comparison(sale_df: pd.DataFrame, rent_df: pd.DataFrame) -> p
     return merged[columns].sort_values("rooms")
 
 
-def make_output_dir(city: str, neighborhood: str) -> Path:
-    slug = re.sub(r"[^\w\u0590-\u05ff]+", "_", f"{city}_{neighborhood}").strip("_")
-    out = OUT_DIR / slug
+def extract_location_from_page(page: Page) -> str:
+    """
+    Parse the Yad2 URL after the user sets filters to extract a location slug.
+
+    Yad2 updates the URL path to include the area when a neighborhood is selected:
+      /realestate/forsale/flats-old-north-north-in-tel-aviv-yafo?city=5000&...
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    Returns a cleaned string like 'old_north_north_in_tel_aviv_yafo'.
+    Falls back to 'unknown_area' if the URL can't be parsed.
+    """
+    try:
+        path = urlparse(page.url).path          # /realestate/rent/<slug>
+        parts = [p for p in path.split("/") if p]
+        if len(parts) >= 3:
+            slug = parts[2]
+            # Strip Yad2 property-type prefixes that precede the location
+            for prefix in (
+                "flats-", "apartments-", "penthouse-", "rooms-",
+                "cottage-", "garden-apartment-", "warehouses-",
+            ):
+                if slug.startswith(prefix):
+                    slug = slug[len(prefix):]
+                    break
+            return slug.replace("-", "_")
+        return parts[-1].replace("-", "_") if parts else "unknown_area"
+    except Exception:
+        return "unknown_area"
+
+
+def make_output_dir(slug: str) -> Path:
+    clean = re.sub(r"[^\w\u0590-\u05ff]+", "_", slug).strip("_") or "unknown_area"
+    out = OUT_DIR / clean
     out.mkdir(parents=True, exist_ok=True)
     return out
 
@@ -533,11 +573,7 @@ def print_preview(title: str, df: pd.DataFrame, max_rows: int = 10) -> None:
 def main() -> None:
     print("Yad2 Buy vs Rent Analyzer")
     print("The script will open sale and rent pages. Set filters manually in the browser, then press Enter in the terminal.")
-
-    city = input("City (e.g. Tel Aviv): ").strip() or "unknown_city"
-    neighborhood = input("Neighborhood (e.g. Old North): ").strip() or "unknown_neighborhood"
-    out_dir = make_output_dir(city, neighborhood)
-    print(f"Output folder: {out_dir.resolve()}")
+    print("The output folder name will be detected automatically from the page URL.\n")
 
     load_cycles_raw = input("How many load/scroll cycles to try? [default 10]: ").strip()
     load_cycles = int(load_cycles_raw) if load_cycles_raw.isdigit() else 10
@@ -550,10 +586,15 @@ def main() -> None:
         sale_df = pd.DataFrame()
         rent_df = pd.DataFrame()
 
-        sale_rows = open_and_collect(sale_page, SALE_URL, "sale", load_cycles=load_cycles)
-        rent_rows = open_and_collect(rent_page, RENT_URL, "rent", load_cycles=load_cycles)
+        sale_rows, sale_location = open_and_collect(sale_page, SALE_URL, "sale", load_cycles=load_cycles)
+        rent_rows, _             = open_and_collect(rent_page, RENT_URL, "rent", load_cycles=load_cycles)
 
         browser.close()
+
+    # Use location from sale page URL; fall back to rent if sale was generic
+    location = sale_location if sale_location != "unknown_area" else "unknown_area"
+    out_dir = make_output_dir(location)
+    print(f"\nOutput folder: {out_dir.resolve()}")
 
     if sale_rows:
         sale_df = pd.DataFrame([asdict(x) for x in sale_rows])
