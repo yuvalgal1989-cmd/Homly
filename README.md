@@ -1,6 +1,6 @@
 # Yad2 Buy vs Rent Analyzer
 
-A local Python tool that scrapes **apartments for sale** and **apartments for rent** from [Yad2](https://www.yad2.co.il), then compares them to estimate **market rent** and **potential gross yield** for each sale listing.
+A local Python tool that scrapes **apartments for sale** and **apartments for rent** from [Yad2](https://www.yad2.co.il), then analyzes them to estimate **market rent**, **potential gross yield**, and **mortgage costs** for each property.
 
 ---
 
@@ -11,6 +11,7 @@ A local Python tool that scrapes **apartments for sale** and **apartments for re
 3. You press Enter in the terminal
 4. The script scrolls the page to load all listings, then scrapes them
 5. Data is parsed, analyzed, and saved as CSV files
+6. Open the Streamlit dashboard to explore results visually
 
 The browser stays visible throughout — filters are never automated.
 
@@ -57,6 +58,45 @@ Gross Yield = (Average Comparable Rent × 12) / Purchase Price
 
 ---
 
+## Mortgage Calculator
+
+A standalone module (`mortgage.py`) with no external dependencies:
+
+| Function | Description |
+|---|---|
+| `calculate_down_payment(price, ltv_percent)` | Down payment based on LTV |
+| `calculate_loan_amount(price, down_payment)` | Principal = price − down payment |
+| `calculate_monthly_payment(loan, interest, years)` | Standard annuity formula |
+| `calculate_total_payment(monthly, years)` | Total paid over loan term |
+| `calculate_total_interest(total, loan)` | Total interest = total − principal |
+| `calculate_cash_flow(monthly_rent, monthly_payment)` | Net monthly cash flow |
+| `simulate_mortgage_scenarios(price, ltv, interest, years_list)` | Compare multiple durations |
+
+```python
+from mortgage import simulate_mortgage_scenarios
+scenarios = simulate_mortgage_scenarios(
+    price=2_500_000, ltv_percent=75, annual_interest=4.5, years_list=[15, 20, 25, 30]
+)
+```
+
+---
+
+## Streamlit Dashboard
+
+An interactive dashboard (`dashboard.py`) with 5 tabs:
+
+| Tab | Contents |
+|---|---|
+| 📋 Listings | Sale and rent tables, filterable by rooms, clickable links |
+| 📊 Market Stats | Avg price and ₪/m² charts by room count |
+| ⚖️ Buy vs Rent | Side-by-side comparison table and gross yield bar chart |
+| 💰 Yield Estimates | Per-listing yield table + price vs yield scatter plot |
+| 🏦 Mortgage Calculator | Scenario comparison, cash flow, payment and interest charts |
+
+Suspicious values (rent > ₪30k, yield > 15%, ₪/m² > ₪500) are highlighted in red automatically.
+
+---
+
 ## Setup
 
 ```bash
@@ -64,13 +104,15 @@ python -m venv .venv
 source .venv/bin/activate        # Mac/Linux
 # .venv\Scripts\activate         # Windows
 
-pip install playwright pandas numpy
+pip install playwright pandas numpy streamlit plotly
 playwright install chromium
 ```
 
 ---
 
 ## Usage
+
+### Run the scraper
 
 ```bash
 python yad2_rental_analyzer.py
@@ -82,22 +124,29 @@ python yad2_rental_analyzer.py
 4. The browser opens the **rent** page — apply your filters, then press Enter
 5. Results are saved to `yad2_output/{city}_{neighborhood}/`
 
+### Launch the dashboard
+
+```bash
+streamlit run dashboard.py
+```
+
 ---
 
 ## Debugging
 
-If selectors fail or data looks wrong, the script automatically saves:
+If scraping returns empty results, the script automatically saves:
 
-- `yad2_output/debug_sale_page.html` — full DOM of the sale page
-- `yad2_output/debug_sale_page.png` — screenshot at time of extraction
-- `yad2_output/debug_rent_page.html` / `.png` — same for rent
+- `yad2_output/.../debug_sale_page.html` — full DOM at time of extraction
+- `yad2_output/.../debug_sale_page.png` — screenshot at time of extraction
+- Same for rent
 
-The terminal also prints a selector probe table showing how many elements each selector matched, and a sample of the first card's raw text.
+The terminal also prints a selector probe table showing match counts per selector and a sample of the first card's raw text.
 
 ---
 
 ## Known Limitations
 
-- Yad2 requires a logged-in or non-blocked session — if the page loads empty, try opening it manually in a regular browser first
+- Yad2 requires a non-blocked browser session — if the page loads empty, try opening it in a regular browser first
 - Sponsored listings and banners are filtered out during parsing
-- Gross yield is an estimate only — it does not account for taxes, maintenance, vacancy, or financing
+- Gross yield is an estimate — it does not account for taxes, maintenance, vacancy, or financing costs
+- Mortgage calculations assume a fixed interest rate for the full term
