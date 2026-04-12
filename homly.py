@@ -517,22 +517,26 @@ def build_buy_rent_comparison(sale_df: pd.DataFrame, rent_df: pd.DataFrame) -> p
     return merged[columns].sort_values("rooms")
 
 
+_URL_DEAD_ENDS = {"forsale", "rent", "realestate", ""}
+
+
 def extract_location_from_page(page: Page) -> str:
     """
-    Parse the Yad2 URL after the user sets filters to extract a location slug.
+    Extract a location slug from the Yad2 page after filters are applied.
 
-    Yad2 updates the URL path to include the area when a neighborhood is selected:
-      /realestate/forsale/flats-old-north-north-in-tel-aviv-yafo?city=5000&...
-                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    Returns a cleaned string like 'old_north_north_in_tel_aviv_yafo'.
-    Falls back to 'unknown_area' if the URL can't be parsed.
+    Strategy:
+    1. URL slug  — works when Yad2 encodes neighborhood in the path, e.g.
+                   /realestate/forsale/flats-florentine-in-tel-aviv-yafo
+    2. Page title — fallback when only city was selected (no path slug).
+                   Yad2 titles contain the city name, e.g.
+                   "דירות למכירה בתל אביב יפו | יד2" → "tel_aviv_yafo"
     """
+    # ── 1. Try URL slug ──────────────────────────���────────────────────────────
     try:
-        path = urlparse(page.url).path          # /realestate/rent/<slug>
+        path = urlparse(page.url).path
         parts = [p for p in path.split("/") if p]
-        if len(parts) >= 3:
+        if len(parts) >= 3 and parts[2] not in _URL_DEAD_ENDS:
             slug = parts[2]
-            # Strip Yad2 property-type prefixes that precede the location
             for prefix in (
                 "flats-", "apartments-", "penthouse-", "rooms-",
                 "cottage-", "garden-apartment-", "warehouses-",
@@ -541,9 +545,28 @@ def extract_location_from_page(page: Page) -> str:
                     slug = slug[len(prefix):]
                     break
             return slug.replace("-", "_")
-        return parts[-1].replace("-", "_") if parts else "unknown_area"
     except Exception:
-        return "unknown_area"
+        pass
+
+    # ── 2. Fallback: page title ───────────────────────────────────────────────
+    # Yad2 title format: "דירות למכירה בתל אביב יפו | יד2"
+    #                 or "נכסים להשכרה - בשכונת X, תל אביב יפו | ..."
+    try:
+        title = page.title().split("|")[0].strip()
+        # Strip Hebrew property-type prefix up to the location keyword
+        title = re.sub(
+            r'^(דירות|נדל["\u05f4]ן|נכסים)\s+(למכירה|להשכרה)\s*[-–]?\s*',
+            "", title,
+        )
+        # Extract everything after ב / בשכונת
+        m = re.search(r'ב(?:שכונת\s+)?(.+)', title)
+        if m:
+            location = m.group(1).strip().rstrip(".")
+            return re.sub(r'[,\s\-]+', "_", location).strip("_")
+    except Exception:
+        pass
+
+    return "unknown_area"
 
 
 def make_output_dir(slug: str) -> Path:
