@@ -429,6 +429,7 @@ with tab4:
         valid2 = valid2[valid2["estimated_gross_yield"] < 0.20]
         if not valid2.empty:
             valid2["address_clean"] = valid2["address"].apply(clean_address)
+            valid2["size_sqm"] = valid2["size_sqm"].fillna(valid2["size_sqm"].median()).clip(lower=1)
             fig = px.scatter(
                 valid2,
                 x="purchase_price",
