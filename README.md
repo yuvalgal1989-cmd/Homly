@@ -1,4 +1,4 @@
-# Yad2 Buy vs Rent Analyzer
+# Homly — Real Estate Analyzer
 
 A local Python tool that scrapes **apartments for sale** and **apartments for rent** from [Yad2](https://www.yad2.co.il), then analyzes them to estimate **market rent**, **potential gross yield**, and **mortgage costs** for each property.
 
@@ -115,7 +115,7 @@ playwright install chromium
 ### Run the scraper
 
 ```bash
-python yad2_rental_analyzer.py
+python homly.py
 ```
 
 1. Enter the **city** and **neighborhood** — this becomes the output folder name

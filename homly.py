@@ -571,7 +571,7 @@ def print_preview(title: str, df: pd.DataFrame, max_rows: int = 10) -> None:
 
 
 def main() -> None:
-    print("Yad2 Buy vs Rent Analyzer")
+    print("Homly — Real Estate Analyzer")
     print("The script will open sale and rent pages. Set filters manually in the browser, then press Enter in the terminal.")
     print("The output folder name will be detected automatically from the page URL.\n")
 

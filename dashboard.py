@@ -10,7 +10,7 @@ OUT_DIR = Path("./yad2_output")
 YIELD_FORMAT = "{:.2%}"
 
 st.set_page_config(
-    page_title="Yad2 Analyzer",
+    page_title="Homly",
     page_icon="🏠",
     layout="wide",
 )
@@ -96,7 +96,7 @@ def available_folders() -> list[str]:
 
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 
-st.sidebar.title("🏠 Yad2 Analyzer")
+st.sidebar.title("🏠 Homly")
 
 folders = available_folders()
 if not folders:
