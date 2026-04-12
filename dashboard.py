@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import subprocess
 import pandas as pd
 import plotly.express as px
 import streamlit as st
@@ -117,6 +118,19 @@ yield_df  = load_csv(folder / "sale_listing_yield_estimates.csv")
 for df in [sale_df, rent_df, yield_df]:
     if "address" in df.columns:
         df["address"] = df["address"].apply(clean_address)
+
+st.sidebar.markdown("---")
+if st.sidebar.button("▶ Run New Scrape", use_container_width=True, type="primary"):
+    project_dir = Path(__file__).parent.resolve()
+    script = project_dir / "homly.py"
+    venv_python = project_dir / ".venv" / "bin" / "python"
+    python = str(venv_python) if venv_python.exists() else "python"
+    cmd = f'cd "{project_dir}" && "{python}" "{script}"'
+    subprocess.Popen(
+        ["osascript", "-e",
+         f'tell application "Terminal" to do script "{cmd}"'],
+    )
+    st.sidebar.success("Terminal opened — follow the prompts there.")
 
 st.sidebar.markdown("---")
 st.sidebar.metric("Sale listings", len(sale_df))
