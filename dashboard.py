@@ -220,8 +220,8 @@ with tab1:
                 "floor": "Floor", "price": "Rent/mo", "price_per_sqm": "₪/m²", "link": "Link",
             })
             styled = display.style \
-                .applymap(flag_rent_price, subset=["Rent/mo"]) \
-                .applymap(flag_rent_ppsqm, subset=["₪/m²"]) \
+                .map(flag_rent_price, subset=["Rent/mo"]) \
+                .map(flag_rent_ppsqm, subset=["₪/m²"]) \
                 .format({
                     "Rooms":   fmt_rooms,
                     "Rent/mo": fmt_price,
@@ -373,11 +373,11 @@ with tab3:
 
         styled = display.style.format(fmt_map)
         if "Avg Rent/mo" in display.columns:
-            styled = styled.applymap(flag_rent_price, subset=["Avg Rent/mo"])
+            styled = styled.map(flag_rent_price, subset=["Avg Rent/mo"])
         if "Rent ₪/m²" in display.columns:
-            styled = styled.applymap(flag_rent_ppsqm, subset=["Rent ₪/m²"])
+            styled = styled.map(flag_rent_ppsqm, subset=["Rent ₪/m²"])
         if "Gross Yield" in display.columns:
-            styled = styled.applymap(flag_yield, subset=["Gross Yield"])
+            styled = styled.map(flag_yield, subset=["Gross Yield"])
 
         st.dataframe(styled, use_container_width=True, hide_index=True)
 
@@ -455,9 +455,9 @@ with tab4:
 
         styled = display.style.format(fmt_map)
         if "Est. Rent/mo" in display.columns:
-            styled = styled.applymap(flag_rent_price, subset=["Est. Rent/mo"])
+            styled = styled.map(flag_rent_price, subset=["Est. Rent/mo"])
         if "Gross Yield" in display.columns:
-            styled = styled.applymap(flag_yield, subset=["Gross Yield"])
+            styled = styled.map(flag_yield, subset=["Gross Yield"])
 
         st.dataframe(
             styled,
@@ -610,7 +610,7 @@ with tab5:
 
             styled = display.style.format(fmt)
             if "Cash Flow / mo" in display.columns:
-                styled = styled.applymap(color_cashflow, subset=["Cash Flow / mo"])
+                styled = styled.map(color_cashflow, subset=["Cash Flow / mo"])
 
             st.dataframe(styled, use_container_width=True, hide_index=True)
 
