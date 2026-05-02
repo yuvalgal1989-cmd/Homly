@@ -4,6 +4,7 @@ import sys
 sys.stdout.reconfigure(encoding="utf-8", line_buffering=True)
 
 import re
+import subprocess
 import time
 from dataclasses import dataclass, asdict
 from pathlib import Path
@@ -585,6 +586,31 @@ def save_outputs(out_dir: Path, sale_df: pd.DataFrame, rent_df: pd.DataFrame, sa
     yield_df.to_csv(out_dir / "sale_listing_yield_estimates.csv", index=False, encoding="utf-8-sig")
 
 
+def push_to_github(out_dir: Path) -> None:
+    """Commit the scraped CSVs and push to GitHub so the web dashboard updates."""
+    repo_root = Path(__file__).parent.resolve()
+    try:
+        subprocess.run(["git", "add", "yad2_output/"], cwd=repo_root, check=True)
+        result = subprocess.run(
+            ["git", "diff", "--cached", "--quiet"],
+            cwd=repo_root,
+        )
+        if result.returncode == 0:
+            print("\nNo changes to push (data unchanged).")
+            return
+        label = out_dir.name
+        subprocess.run(
+            ["git", "commit", "-m", f"Update scraped data — {label}"],
+            cwd=repo_root, check=True,
+        )
+        subprocess.run(["git", "push"], cwd=repo_root, check=True)
+        print("\nData pushed to GitHub — web dashboard will refresh shortly.")
+    except subprocess.CalledProcessError as e:
+        print(f"\nGit push failed: {e}. Run ./push_data.sh manually if needed.")
+    except FileNotFoundError:
+        print("\ngit not found — skipping auto-push.")
+
+
 def print_preview(title: str, df: pd.DataFrame, max_rows: int = 10) -> None:
     print(f"\n{title}")
     if df.empty:
@@ -648,6 +674,7 @@ def main() -> None:
     print_preview("Per-sale yield estimates", yield_df)
 
     save_outputs(out_dir, sale_df, rent_df, sale_summary, rent_summary, comparison_df, yield_df)
+    push_to_github(out_dir)
 
     print("\nSaved files:")
     for fname in [
