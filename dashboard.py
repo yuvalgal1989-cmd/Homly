@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import platform
 import stat
 import subprocess
 import tempfile
@@ -7,6 +8,8 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 from pathlib import Path
+
+IS_LOCAL_MAC = platform.system() == "Darwin"
 
 from mortgage import simulate_mortgage_scenarios, calculate_cash_flow
 
@@ -104,7 +107,20 @@ st.sidebar.title("🏠 Homly")
 
 folders = available_folders()
 if not folders:
-    st.error(f"No data found in `{OUT_DIR.resolve()}`. Run the scraper first.")
+    st.title("🏠 Homly")
+    st.info("No scraped data found yet.")
+    if IS_LOCAL_MAC:
+        st.markdown(
+            "Run `python homly.py` to scrape listings, then reload this page.\n\n"
+            "Or use the **▶ Run New Scrape** button in the sidebar."
+        )
+    else:
+        st.markdown(
+            "**To add data:**\n"
+            "1. Run `python homly.py` on your local machine\n"
+            "2. Run `./push_data.sh` to push results to GitHub\n"
+            "3. This dashboard will refresh automatically (~30 seconds)"
+        )
     st.stop()
 
 selected = st.sidebar.selectbox("Search area", folders)
@@ -123,7 +139,7 @@ for df in [sale_df, rent_df, yield_df]:
         df["address"] = df["address"].apply(clean_address)
 
 st.sidebar.markdown("---")
-if st.sidebar.button("▶ Run New Scrape", use_container_width=True, type="primary"):
+if IS_LOCAL_MAC and st.sidebar.button("▶ Run New Scrape", use_container_width=True, type="primary"):
     project_dir = Path(__file__).parent.resolve()
     venv_python = project_dir / ".venv" / "bin" / "python"
     python = str(venv_python) if venv_python.exists() else "python"

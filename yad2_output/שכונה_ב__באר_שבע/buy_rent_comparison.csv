@@ -1,0 +1,4 @@
+﻿rooms,avg_purchase_price,avg_rent_price,avg_purchase_price_per_sqm,avg_rent_price_per_sqm,estimated_gross_yield,sample_size_buy,sample_size_rent
+3.0,1114399.8,114250.0,12942.4578,2075.71,1.2303,10,8
+4.0,1253899.95,183000.0,11733.8284,31.6189,1.7513,20,10
+5.0,2336111.1111,4850.0,14131.6033,31.76,0.0249,9,2

@@ -1,8 +1,9 @@
 # Virtual environment
 .venv/
 
-# Output data (scraped CSVs and debug files)
-yad2_output/
+# Debug snapshots only — CSV data is tracked so the cloud dashboard can read it
+yad2_output/**/*.html
+yad2_output/**/*.png
 
 # Python
 __pycache__/
